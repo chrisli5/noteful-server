@@ -13,6 +13,7 @@ app.use(morgan(morganOption))
 app.use(helmet())
 app.use(cors())
 
+console.log(process.env.API_TOKEN);
 app.get('/', (req, res) => {
     res.send('Hello, world!')
 })
