@@ -2,57 +2,62 @@ const path = require('path');
 const express = require('express');
 const xss = require('xss');
 const logger = require('../logger');
-const FoldersService = require('./folders-service');
+const NotesService = require('./notes-service');
 
-const foldersRouter = express.Router();
+const notesRouter = express.Router();
 const bodyParser = express.json();
 
-const serializeFolder = folder => ({
-    id: folder.id,
-    name: xss(folder.name),
+const serializeNote = note => ({
+    id: note.id,
+    name: xss(note.name),
+    content: xss(note.content),
+    modified: xss(note.modified),
+    folderId: note.folderId,
 })
 
-foldersRouter
+notesRouter
     .route('/')
 
     .get((req, res, next) => {
-        FoldersService.getAllFolders(req.app.get('db'))
-            .then(folders => {
-                res.json(folders.map(serializeFolder))
+        NotesService.getAllNotes(req.app.get('db'))
+            .then(notes => {
+                res.json(notes.map(serializeNote))
             })
             .catch(next)
     })
 
     .post(bodyParser, (req, res, next) => {
-        const { name } = req.body;
-        const newFolder = { name };
-        console.log(name);
-        if(!name) {
-            logger.error('folder name is required')
-            return res.status(400).send({
-                error: { message: 'folder name is required' }
-            })
+        const { name, content, folderId } = req.body;
+        const newNote = { name, content, folderId };
+
+        for (const field of ['name', 'content', 'folderId']) {
+            if (!newNote[field]) {
+                logger.error(`${field} is required.`)
+                return res.status(404).send({
+                    error: { message: `${field} is required.` }
+                })
+            }
         }
 
-        FoldersService.insertFolder(
+        NotesService.insertNote(
             req.app.get('db'),
-            newFolder
+            newNote
         )
-            .then(folder => {
-                logger.info(`Folder with id ${folder.id} created.`)
+            .then(note => {
+                logger.info(`Note with id ${note.id} created.`)
                 res
                     .status(201)
-                    .location(path.posix.join(req.originalUrl, `${folder.id}`))
-                    .json(serializeFolder(folder))
+                    .location(path.posix.join(req.originalUrl, `${note.id}`))
+                    .json(serializeNote(note))
             })
             .catch(next)
     })
 
-foldersRouter
+notesRouter
     .route('/:folderId')
     .all((req, res, next) => {
         const { folderId } = req.params
-        FoldersService.getById(req.app.get('db'), folderId)
+        NotesService.getById(req.app.get('db'), folderId)
             .then(folder => {
                 if(!folder) {
                     logger.error(`Folder with id ${folderId} not found.`)
@@ -68,12 +73,12 @@ foldersRouter
     })
 
     .get((req, res) => {
-        res.json(serializeFolder(res.folder));
+        res.json(serializeNote(res.folder));
     })
 
     .delete((req, res, next) => {
         const { folderId } = req.params;
-        FoldersService.deleteFolder(req.app.get('db'), folderId)
+        NotesService.deleteFolder(req.app.get('db'), folderId)
             .then(numRowsAffected => {
                 logger.info(`Folder with id ${folderId} deleted.`)
                 res.status(204).end();
@@ -92,7 +97,7 @@ foldersRouter
             })
         }
 
-        FoldersService.updateFolder(
+        NotesService.updateFolder(
             req.app.get('db'),
             req.params.folderId,
             { name }
@@ -103,4 +108,4 @@ foldersRouter
             .catch(next)
     })
 
-module.exports = foldersRouter;
+module.exports = notesRouter;

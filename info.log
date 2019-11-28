@@ -5,3 +5,4 @@
 {"message":"Folder with id 5 deleted.","level":"info"}
 {"message":"Folder with id 4 deleted.","level":"info"}
 {"message":"Folder with id 3 deleted.","level":"info"}
+{"message":"Folder with id 3 not found.","level":"error"}
